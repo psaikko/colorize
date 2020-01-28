@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
 import matplotlib.pyplot as plt
-import feedforward
+from colorizer import Colorizer
 
 # Workaround for tf 2.0 issue
 # https://stackoverflow.com/a/58684421
@@ -13,8 +13,10 @@ tf.config.experimental.set_memory_growth(physical_devices[0], True)
 img_nrows = 256
 img_ncols = 256
 
-ff = feedforward.make_network(scale=16)
-ff.compile(loss=tf.keras.losses.mean_squared_error, optimizer="adam")
+model = Colorizer(scale=16)
+model.compile(loss=tf.keras.losses.mean_squared_error, optimizer="adam")
+model.build(input_shape=(None,img_nrows,img_ncols,3))
+model.summary()
 
 #
 # Training on the MS-COCO dataset
@@ -47,7 +49,7 @@ for batch in feed:
     # Copy grayscale data over 3 channels
     gray_batch = tf.tile(gray_batch, (1,1,1,3))
 
-    ff.fit(color_batch, gray_batch)
+    model.fit(color_batch, gray_batch)
     
     fig.suptitle("Iteration %d" % i)
     if i % 10 == 0:
@@ -67,12 +69,12 @@ for batch in feed:
             plt.subplot(333+3*j)
             plt.cla()
             plt.title("Colorized")
-            plt.imshow(reshape(ff(tf.expand_dims(gray_batch[j], axis=0))))
+            plt.imshow(reshape(model(tf.expand_dims(gray_batch[j], axis=0))))
             plt.axis('off')
         plt.pause(0.01)
 
     if i % 1000 == 0:
-        ff.save_weights("checkpoints/%d" % i)
+        model.save_weights("checkpoints/%d" % i)
         plt.savefig("checkpoints/%d.png" % i)
     # train for about 2 epochs
     if i * batch_size > 2 * n_samples:
