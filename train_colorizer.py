@@ -23,16 +23,24 @@ model.summary()
 #
 coco_train, info = tfds.load(name="coco", split="train", with_info=True)
 
+print(info)
+
 # util functions for data pipeline
 def resize(x): return tf.image.resize(x, (img_nrows, img_ncols))
 def get_image(x): return x["image"]
+def make_class_filter(class_id):
+    def class_filter(x):
+        return tf.reduce_any(x["objects"]["label"] == class_id)
+    return class_filter
 
 #
 # Set up tf.data pipeline
 #
 batch_size = 16
+STOPSIGN_ID = 11
 n_samples = info.splits["train"].num_examples
-feed = coco_train.repeat()
+feed = coco_train.filter(make_class_filter(STOPSIGN_ID))
+feed = feed.repeat()
 feed = feed.map(get_image).map(resize)
 feed = feed.shuffle(42).batch(batch_size)
 
@@ -41,7 +49,7 @@ def reshape(x): return x.numpy().reshape((img_nrows, img_ncols, 3)) / 255
 
 i = 0
 fig, ax = plt.subplots(3,3)
-plt.subplots_adjust(left=0,right=1,bottom=0,top=1,wspace=0,hspace=0)
+plt.subplots_adjust(left=0,right=1,bottom=0,top=0.9,wspace=0,hspace=0.2)
 for batch in feed: 
     color_batch = batch
     # Simple conversion to grayscale by taking a mean of RGB dimension
@@ -51,8 +59,8 @@ for batch in feed:
 
     model.fit(color_batch, gray_batch)
     
-    fig.suptitle("Iteration %d" % i)
     if i % 10 == 0:
+        fig.suptitle("Iteration %d" % i)
         for j in range(3):
             plt.subplot(331+3*j)
             plt.cla()
