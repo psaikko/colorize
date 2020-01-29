@@ -1,5 +1,4 @@
 import tensorflow as tf
-import tensorflow_addons as tfa
 
 # Residual block as in
 # https://web.eecs.umich.edu/~justincj/papers/eccv16/JohnsonECCV16Supplementary.pdf
@@ -8,14 +7,12 @@ class ResidualBlock(tf.keras.layers.Layer):
         super(ResidualBlock, self).__init__()
         self.filters = filters
 
-        # Use instance normalization instead as suggested in 
-        # https://arxiv.org/abs/1607.08022
         self.layers = [
             tf.keras.layers.Conv2D(filters=self.filters, kernel_size=(3,3)),
-            tfa.layers.InstanceNormalization(),
+            tf.keras.layers.BatchNormalization(),
             tf.keras.activations.relu,
             tf.keras.layers.Conv2D(filters=self.filters, kernel_size=(3,3)),
-            tfa.layers.InstanceNormalization()
+            tf.keras.layers.BatchNormalization()
         ]
         for (i, layer) in enumerate(self.layers):
              self.__setattr__("layer_%d"%i, layer)
@@ -31,15 +28,15 @@ class Colorizer(tf.keras.Model):
     def __init__(self, scale=32):
         super(Colorizer, self).__init__()
         self.conv_1 = tf.keras.layers.Conv2D(filters=scale, kernel_size=(9,9), strides=1, padding="same")
-        self.norm_1 = tfa.layers.InstanceNormalization()
+        self.norm_1 = tf.keras.layers.BatchNormalization()
         self.relu_1 = tf.keras.activations.relu
 
         self.conv_2 = tf.keras.layers.Conv2D(filters=scale*2, kernel_size=(3,3), strides=2, padding="same")
-        self.norm_2 = tfa.layers.InstanceNormalization()
+        self.norm_2 = tf.keras.layers.BatchNormalization()
         self.relu_2 = tf.keras.activations.relu
 
         self.conv_3 = tf.keras.layers.Conv2D(filters=scale*4, kernel_size=(3,3), strides=2, padding="same")
-        self.norm_3 = tfa.layers.InstanceNormalization()
+        self.norm_3 = tf.keras.layers.BatchNormalization()
         self.relu_3 = tf.keras.activations.relu
 
         self.res_block_1 = ResidualBlock(scale*4)
@@ -50,15 +47,15 @@ class Colorizer(tf.keras.Model):
 
         # equivalent to "fractionally strided convolutions"
         self.conv_4 = tf.keras.layers.Conv2DTranspose(filters=scale*2, kernel_size=(3,3), strides=2, padding="same")
-        self.norm_4 = tfa.layers.InstanceNormalization()
+        self.norm_4 = tf.keras.layers.BatchNormalization()
         self.relu_4 = tf.keras.activations.relu
 
         self.conv_5 = tf.keras.layers.Conv2DTranspose(filters=scale, kernel_size=(3,3), strides=2, padding="same")
-        self.norm_5 = tfa.layers.InstanceNormalization()
+        self.norm_5 = tf.keras.layers.BatchNormalization()
         self.relu_5 = tf.keras.activations.relu
 
         self.conv_6 = tf.keras.layers.Conv2DTranspose(filters=3, kernel_size=(9,9), strides=1, padding="same")
-        self.norm_6 = tfa.layers.InstanceNormalization()
+        self.norm_6 = tf.keras.layers.BatchNormalization()
         self.tanh_out = tf.keras.activations.tanh
 
     def call(self, x):
