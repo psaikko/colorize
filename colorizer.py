@@ -25,7 +25,7 @@ class ResidualBlock(tf.keras.layers.Layer):
         return tf.keras.backend.sum([x, res], axis=0)
 
 class Colorizer(tf.keras.Model):
-    def __init__(self, scale=32):
+    def __init__(self, scale=32, out_channels=3):
         super(Colorizer, self).__init__()
         self.conv_1 = tf.keras.layers.Conv2D(filters=scale, kernel_size=(9,9), strides=1, padding="same")
         self.norm_1 = tf.keras.layers.BatchNormalization()
@@ -54,7 +54,7 @@ class Colorizer(tf.keras.Model):
         self.norm_5 = tf.keras.layers.BatchNormalization()
         self.relu_5 = tf.keras.activations.relu
 
-        self.conv_6 = tf.keras.layers.Conv2DTranspose(filters=3, kernel_size=(9,9), strides=1, padding="same")
+        self.conv_6 = tf.keras.layers.Conv2DTranspose(filters=out_channels, kernel_size=(9,9), strides=1, padding="same")
         self.norm_6 = tf.keras.layers.BatchNormalization()
         self.tanh_out = tf.keras.activations.tanh
 
@@ -75,4 +75,4 @@ class Colorizer(tf.keras.Model):
         x = self.relu_5(self.norm_5(self.conv_5(x)))
         x = self.tanh_out(self.norm_6(self.conv_6(x)))
 
-        return (x + 1) * 127.5
+        return x / 2
