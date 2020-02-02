@@ -46,14 +46,26 @@ feed = feed.map(get_image, num_parallel_calls=4)\
            .map(to_yuv, num_parallel_calls=4)\
            .batch(data_batch_size)
 
-# util function to convert a tensor into a valid image
-def reshape(x,channels=3): return x.numpy().reshape((img_nrows, img_ncols, channels)) / 255
 
 epochs = 2
 fig, ax = plt.subplots(4,3)
 plt.subplots_adjust(left=0,right=1,bottom=0,top=0.9,wspace=0,hspace=0.2)
 
 example_index = 0
+
+def show_rgb(x):
+    plt.imshow(x.numpy().reshape((img_nrows, img_ncols, 3)), vmin=0, vmax=255)
+
+def show_yuv(x):
+    x = tf.image.yuv_to_rgb(x)
+    x = tf.clip_by_value(x,0,1)
+    plt.imshow(x.numpy().reshape((img_nrows, img_ncols, 3)), vmin=0, vmax=1)
+
+def show_2ch(x):
+    plt.imshow(tf.squeeze(x).numpy(), vmin=-0.5, vmax=0.5)
+
+def show_1ch(x):
+    plt.imshow(tf.squeeze(x).numpy(), cmap='Greys', vmin=0, vmax=1)
 
 i = 0
 for yuv_images in feed:
@@ -70,35 +82,34 @@ for yuv_images in feed:
     fig.suptitle("Iteration %d" % (i+1))
     plt.subplot(430+2)
     plt.title("Image")
-    plt.imshow(reshape(tf.image.yuv_to_rgb(yuv_images[example_index]) * 255))
+    show_yuv(yuv_images[example_index])
 
     plt.subplot(430+3+1)
     plt.title("Y")
-    plt.imshow(tf.squeeze(y_data[example_index]).numpy(), cmap='Greys', vmin=0, vmax=1)
+    show_1ch(y_data[example_index])
 
     plt.subplot(430+3+2)
     plt.title("U")
-    plt.imshow(tf.squeeze(uv_data[example_index,:,:,0]).numpy(), vmin=-0.5, vmax=0.5)
+    show_2ch(uv_data[example_index,:,:,0])
 
     plt.subplot(430+3+3)
     plt.title("V")
-    plt.imshow(tf.squeeze(uv_data[example_index,:,:,1]).numpy(), vmin=-0.5, vmax=0.5)
+    show_2ch(uv_data[example_index,:,:,1])
 
     uv_pred = model(tf.expand_dims(y_data[example_index], axis=0))
 
     plt.subplot(430+3*2+2)
     plt.title("U'")
-    plt.imshow(tf.squeeze(uv_pred[0,:,:,0]).numpy(), vmin=-0.5, vmax=0.5)
+    show_2ch(uv_pred[example_index,:,:,0])
 
     plt.subplot(430+3*2+3)
     plt.title("V'")
-    plt.imshow(tf.squeeze(uv_pred[0,:,:,1]).numpy(), vmin=-0.5, vmax=0.5)
+    show_2ch(uv_pred[example_index,:,:,1])
 
     plt.subplot(4,3,11)
     plt.title("Colorized")
     yuv_pred = tf.concat([y_data[0],uv_pred[0]], axis=-1)
-    rgb_pred = tf.image.yuv_to_rgb(yuv_pred)
-    plt.imshow(reshape(rgb_pred,3)*255)
+    show_yuv(yuv_pred)
 
     plt.pause(0.01)
 
