@@ -15,7 +15,8 @@ img_nrows = 256
 img_ncols = 256
 
 model = Colorizer(scale=16, out_channels=2)
-model.compile(loss=tf.keras.losses.mean_squared_error, optimizer="adam")
+opt = tf.optimizers.Adam()
+model.compile(loss=tf.keras.losses.mean_squared_error, optimizer=opt)
 model.build(input_shape=(None,img_nrows,img_ncols,1))
 model.summary()
 
@@ -36,45 +37,37 @@ def to_yuv(x): return tf.image.rgb_to_yuv(x / 255.0)
 #
 # Set up tf.data pipeline
 #
-batch_size = 16
+data_batch_size = 1000
 STOPSIGN_ID = 11
 n_samples = info.splits["train"].num_examples
-feed = coco_train.filter(make_class_filter(STOPSIGN_ID))
+feed = coco_train 
 feed = feed.map(get_image, num_parallel_calls=4)\
            .map(resize, num_parallel_calls=4)\
-           .map(to_yuv, num_parallel_calls=4)
-
-yuv_images = []
-
-#
-# Process data prior to training
-#
-for x in tqdm(feed):
-    x = tf.expand_dims(x, axis=0)
-    yuv_images += [x]
-yuv_images = tf.concat(yuv_images, axis=0)
-print(yuv_images.shape)
-y_data = tf.expand_dims(yuv_images[:,:,:,0], axis=-1)
-uv_data = yuv_images[:,:,:,1:]
+           .map(to_yuv, num_parallel_calls=4)\
+           .batch(data_batch_size)
 
 # util function to convert a tensor into a valid image
 def reshape(x,channels=3): return x.numpy().reshape((img_nrows, img_ncols, channels)) / 255
 
-epochs = 100
+epochs = 2
 fig, ax = plt.subplots(4,3)
 plt.subplots_adjust(left=0,right=1,bottom=0,top=0.9,wspace=0,hspace=0.2)
 
 example_index = 0
 
-for i in range(epochs):
-    model.fit(y_data, uv_data, batch_size=16)
+i = 0
+for yuv_images in feed:
+    y_data = tf.expand_dims(yuv_images[:,:,:,0], axis=-1)
+    uv_data = yuv_images[:,:,:,1:]
+
+    model.fit(y_data, uv_data, batch_size=8)
 
     for k in range(12):
         plt.subplot(4,3,k+1)
         plt.cla()
         plt.axis('off')
 
-    fig.suptitle("Epoch %d" % (i+1))
+    fig.suptitle("Iteration %d" % (i+1))
     plt.subplot(430+2)
     plt.title("Image")
     plt.imshow(reshape(tf.image.yuv_to_rgb(yuv_images[example_index]) * 255))
@@ -112,4 +105,8 @@ for i in range(epochs):
     if i % 10 == 0:
         model.save_weights("checkpoints/%d" % i)
         plt.savefig("checkpoints/%d.png" % i)
+    i += 1
+
+    if (i * data_batch_size) >= epochs * n_samples:
+        break
     
