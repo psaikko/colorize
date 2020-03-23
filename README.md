@@ -57,6 +57,6 @@ Incorporating global information gets us a bit closer to reasonable results over
 
 ## todos
 
-- investigate memory issues
-- precompute feature vectors
-- verify that images are correctly preprocessed for pretrained resnet classifier
+- [ ] investigate memory issues
+- [ ] precompute feature vectors
+- [ ] verify that images are correctly preprocessed for pretrained resnet classifier
